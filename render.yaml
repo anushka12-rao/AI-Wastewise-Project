@@ -22,13 +22,13 @@ services:
       - key: ADMIN_PASSWORD
         sync: false
       - key: FRONTEND_URL
-        sync: false
+        value: https://ai-wastewise-frontend.onrender.com
       - key: WATSONX_SIMULATION_MODE
         value: "true"
       - key: WATSONX_API_KEY
-        sync: false
+        value: ""
       - key: WATSONX_PROJECT_ID
-        sync: false
+        value: ""
       - key: WATSONX_URL
         value: https://us-south.ml.cloud.ibm.com
       - key: IDENTIFICATION_CONFIDENCE_THRESHOLD
@@ -49,4 +49,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        sync: false
+        value: https://ai-wastewise-backend.onrender.com
