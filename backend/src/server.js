@@ -51,7 +51,7 @@ async function startServer() {
     }
 
     // 5. Start Express server
-    const server = app.listen(env.PORT, () => {
+    const server = app.listen(env.PORT, '0.0.0.0', () => {
       logger.info(`AI WasteWise Backend running on port ${env.PORT} in [${env.NODE_ENV}] mode`);
       logger.info(`Access Health Check: http://localhost:${env.PORT}/api/health`);
     });

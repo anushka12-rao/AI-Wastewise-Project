@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend service for AI WasteWise - Intelligent Waste Identification and Responsible Disposal Assistant",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",

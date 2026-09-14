@@ -64,8 +64,7 @@ async function connectDB() {
     }
 
     if (env.NODE_ENV === 'production') {
-      logger.error(`MongoDB connection error: ${error.message}. Ensure MONGODB_URI is correctly configured in your hosting environment.`);
-      process.exit(1);
+      logger.warn(`MongoDB connection warning: ${error.message}. Ensure MONGODB_URI is correctly configured in your hosting environment.`);
     }
     return null;
   }
