@@ -1,12 +1,27 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+function getApiBaseUrl() {
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api';
+  const trimmed = envUrl.trim().replace(/\/+$/, '');
+  if (!trimmed || trimmed === '/api') return '/api';
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
+const BASE_URL = getApiBaseUrl();
 
 export async function apiRequest(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   
   const headers = {
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers || {})
   };
+
+  // Add Bearer token fallback if present in localStorage
+  if (typeof window !== 'undefined') {
+    const savedToken = localStorage.getItem('wastewise_token');
+    if (savedToken && !headers['Authorization'] && !headers['authorization']) {
+      headers['Authorization'] = `Bearer ${savedToken}`;
+    }
+  }
 
   const config = {
     ...options,

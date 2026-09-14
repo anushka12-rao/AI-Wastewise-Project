@@ -7,7 +7,7 @@ function getCookieOptions() {
   return {
     httpOnly: true,
     secure: isProd, // HTTPS only in production
-    sameSite: isProd ? 'strict' : 'lax',
+    sameSite: isProd ? 'none' : 'lax', // Required for cross-domain cookie exchange
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     path: '/'
   };
@@ -18,10 +18,11 @@ function setSessionCookie(res, token) {
 }
 
 function clearSessionCookie(res) {
+  const isProd = env.NODE_ENV === 'production';
   res.clearCookie(COOKIE_NAME, {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     path: '/'
   });
 }

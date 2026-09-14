@@ -37,8 +37,9 @@ async function connectDB() {
 
   // 1. Try to connect to targetUri directly (e.g. Atlas or already running local MongoDB)
   try {
+    const timeoutMs = env.NODE_ENV === 'production' ? 10000 : 2500;
     const conn = await mongoose.connect(targetUri, {
-      serverSelectionTimeoutMS: 2000,
+      serverSelectionTimeoutMS: timeoutMs,
       autoIndex: true
     });
 
@@ -63,7 +64,7 @@ async function connectDB() {
     }
 
     if (env.NODE_ENV === 'production') {
-      logger.error(`MongoDB connection error: ${error.message}`);
+      logger.error(`MongoDB connection error: ${error.message}. Ensure MONGODB_URI is correctly configured in your hosting environment.`);
       process.exit(1);
     }
     return null;

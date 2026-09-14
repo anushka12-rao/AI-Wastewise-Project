@@ -20,17 +20,30 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 
-// CORS locked to frontend origin with cookie credentials support
-const allowedOrigins = [
-  env.FRONTEND_URL,
-  'http://localhost:5173',
-  'http://127.0.0.1:5173'
-];
+// CORS origin resolution with credentials support
+function isOriginAllowed(origin) {
+  if (!origin) return true; // Non-browser clients (curl, mobile, health checks)
+  
+  const cleanOrigin = origin.replace(/\/+$/, '');
+  const cleanFrontend = (env.FRONTEND_URL || '').replace(/\/+$/, '');
+  
+  if (cleanFrontend && cleanOrigin === cleanFrontend) return true;
+  if (cleanOrigin === 'http://localhost:5173' || cleanOrigin === 'http://127.0.0.1:5173' || cleanOrigin === 'http://localhost:3000') return true;
+  
+  try {
+    const { hostname } = new URL(origin);
+    if (hostname.endsWith('.onrender.com') || hostname.endsWith('.vercel.app')) {
+      return true;
+    }
+  } catch {
+    // Malformed origin URL
+  }
+  return false;
+}
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, postman)
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`CORS blocked for origin: ${origin}`));

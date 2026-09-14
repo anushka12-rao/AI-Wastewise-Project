@@ -1,0 +1,59 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: ai-wastewise-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@wastewise.org
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: ai-wastewise-frontend
+          property: host
+      - key: WATSONX_SIMULATION_MODE
+        value: "true"
+      - key: WATSONX_API_KEY
+        sync: false
+      - key: WATSONX_PROJECT_ID
+        sync: false
+      - key: WATSONX_URL
+        value: https://us-south.ml.cloud.ibm.com
+      - key: IDENTIFICATION_CONFIDENCE_THRESHOLD
+        value: "0.70"
+      - key: RETRIEVAL_SCORE_THRESHOLD
+        value: "0.65"
+
+  # Frontend Static Site
+  - type: web
+    name: ai-wastewise-frontend
+    runtime: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: ai-wastewise-backend
+          property: host

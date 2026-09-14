@@ -19,6 +19,7 @@ async function handleLogin(req, res, next) {
     return res.status(200).json({
       authenticated: true,
       email: authResult.user.email,
+      token: authResult.token,
       message: 'Login successful'
     });
   } catch (error) {

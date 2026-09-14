@@ -28,6 +28,9 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await apiLogin(email, password);
+    if (res && res.token && typeof window !== 'undefined') {
+      localStorage.setItem('wastewise_token', res.token);
+    }
     setUser({ email: res.email || email, role: 'admin' });
     return res;
   };
@@ -36,6 +39,9 @@ export function AuthProvider({ children }) {
     try {
       await apiLogout();
     } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('wastewise_token');
+      }
       setUser(null);
     }
   };
