@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
 const env = require('../config/environment');
-const { connectDB } = require('../config/database');
+const { connectDB, disconnectDB } = require('../config/database');
 const { AdminUser } = require('../models/AdminUser');
 const logger = require('../utils/logger');
 
@@ -9,7 +8,7 @@ async function seedAdmin() {
   try {
     await connectDB();
 
-    const email = env.ADMIN_EMAIL;
+    const email = env.ADMIN_EMAIL.toLowerCase().trim();
     const password = env.ADMIN_PASSWORD;
 
     if (!email || !password) {
@@ -37,7 +36,7 @@ async function seedAdmin() {
     logger.error('Error seeding admin user:', { error: error.message });
     console.error('SeedAdmin failed:', error.message);
   } finally {
-    await mongoose.disconnect();
+    await disconnectDB();
   }
 }
 

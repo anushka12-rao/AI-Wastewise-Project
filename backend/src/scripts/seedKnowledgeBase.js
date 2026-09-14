@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { connectDB } = require('../config/database');
+const { connectDB, disconnectDB } = require('../config/database');
 const { KnowledgeEntry } = require('../models/KnowledgeEntry');
 const logger = require('../utils/logger');
 
@@ -240,7 +240,7 @@ async function seedKnowledgeBase() {
     logger.error('Error seeding knowledge base:', { error: error.message });
     console.error('SeedKB failed:', error.message);
   } finally {
-    await mongoose.disconnect();
+    await disconnectDB();
   }
 }
 

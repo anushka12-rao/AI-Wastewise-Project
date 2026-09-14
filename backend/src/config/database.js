@@ -1,17 +1,44 @@
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
 const env = require('./environment');
 const logger = require('../utils/logger');
 
 let isConnected = false;
+let embeddedServer = null;
+
+async function startEmbeddedMongo() {
+  if (embeddedServer) return embeddedServer;
+
+  const { MongoMemoryServer } = require('mongodb-memory-server');
+  const dbDir = path.resolve(__dirname, '../../data/db');
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+
+  logger.info(`Starting persistent embedded MongoDB server on port 27017 with storage at ${dbDir}...`);
+  embeddedServer = await MongoMemoryServer.create({
+    instance: {
+      dbPath: dbDir,
+      port: 27017,
+      storageEngine: 'wiredTiger'
+    }
+  });
+
+  return embeddedServer;
+}
 
 async function connectDB() {
-  if (isConnected) {
+  if (isConnected && mongoose.connection.readyState === 1) {
     return mongoose.connection;
   }
 
+  const targetUri = env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ai_wastewise';
+
+  // 1. Try to connect to targetUri directly (e.g. Atlas or already running local MongoDB)
   try {
-    const conn = await mongoose.connect(env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 2500,
+    const conn = await mongoose.connect(targetUri, {
+      serverSelectionTimeoutMS: 2000,
       autoIndex: true
     });
 
@@ -19,25 +46,24 @@ async function connectDB() {
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
-    logger.warn(`External MongoDB (${env.MONGODB_URI}) unreachable: ${error.message}`);
-    
-    // In development or test, fall back to in-memory MongoDB so demo runs seamlessly out of the box
+    // 2. If unreachable and in development/test, launch embedded persistent MongoDB on 27017
     if (env.NODE_ENV !== 'production') {
       try {
-        const { MongoMemoryServer } = require('mongodb-memory-server');
-        logger.info('Initializing embedded in-memory MongoDB server for local run...');
-        const memServer = await MongoMemoryServer.create();
-        const uri = memServer.getUri();
-        const conn = await mongoose.connect(uri);
+        await startEmbeddedMongo();
+        const conn = await mongoose.connect(targetUri, {
+          serverSelectionTimeoutMS: 5000,
+          autoIndex: true
+        });
         isConnected = true;
-        logger.info(`In-Memory MongoDB successfully connected: ${uri}`);
+        logger.info(`Persistent embedded MongoDB connected on port 27017`);
         return conn;
-      } catch (memErr) {
-        logger.error(`Embedded MongoDB startup failed: ${memErr.message}`);
+      } catch (embErr) {
+        logger.error(`Failed to start/connect embedded MongoDB: ${embErr.message}`);
       }
     }
 
     if (env.NODE_ENV === 'production') {
+      logger.error(`MongoDB connection error: ${error.message}`);
       process.exit(1);
     }
     return null;
@@ -49,6 +75,15 @@ async function disconnectDB() {
     await mongoose.disconnect();
     isConnected = false;
     logger.info('MongoDB disconnected cleanly');
+  }
+  if (embeddedServer) {
+    try {
+      await embeddedServer.stop();
+      embeddedServer = null;
+      logger.info('Embedded MongoDB server stopped');
+    } catch (stopErr) {
+      logger.warn(`Embedded MongoDB stop note: ${stopErr.message}`);
+    }
   }
 }
 
