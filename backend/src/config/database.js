@@ -47,25 +47,22 @@ async function connectDB() {
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
-    // 2. If unreachable and in development/test, launch embedded persistent MongoDB on 27017
-    if (env.NODE_ENV !== 'production') {
-      try {
-        await startEmbeddedMongo();
-        const conn = await mongoose.connect(targetUri, {
-          serverSelectionTimeoutMS: 5000,
-          autoIndex: true
-        });
-        isConnected = true;
-        logger.info(`Persistent embedded MongoDB connected on port 27017`);
-        return conn;
-      } catch (embErr) {
-        logger.error(`Failed to start/connect embedded MongoDB: ${embErr.message}`);
-      }
+    // 2. If unreachable, launch embedded persistent MongoDB on 27017
+    try {
+      logger.info('Target MongoDB unreachable. Initializing persistent embedded database fallback...');
+      await startEmbeddedMongo();
+      const conn = await mongoose.connect('mongodb://127.0.0.1:27017/ai_wastewise', {
+        serverSelectionTimeoutMS: 5000,
+        autoIndex: true
+      });
+      isConnected = true;
+      logger.info('Persistent embedded MongoDB connected on port 27017');
+      return conn;
+    } catch (embErr) {
+      logger.warn(`Embedded MongoDB startup note: ${embErr.message}`);
     }
 
-    if (env.NODE_ENV === 'production') {
-      logger.warn(`MongoDB connection warning: ${error.message}. Ensure MONGODB_URI is correctly configured in your hosting environment.`);
-    }
+    logger.warn(`MongoDB connection warning: ${error.message}. Ensure MONGODB_URI is correctly configured in your hosting environment.`);
     return null;
   }
 }

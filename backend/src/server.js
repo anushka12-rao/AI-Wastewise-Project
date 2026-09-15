@@ -5,52 +5,64 @@ const { connectDB, disconnectDB } = require('./config/database');
 const { getTable, syncAllToVectorStore } = require('./services/vectorStoreService');
 const logger = require('./utils/logger');
 
+const mongoose = require('mongoose');
+
+async function syncDatabaseState() {
+  if (mongoose.connection.readyState !== 1) return;
+
+  // 1. Synchronize AdminUser from environment credentials
+  try {
+    const { AdminUser } = require('./models/AdminUser');
+    const email = env.ADMIN_EMAIL.toLowerCase().trim();
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, salt);
+
+    await AdminUser.findOneAndUpdate(
+      { email },
+      { email, passwordHash },
+      { upsert: true, new: true }
+    );
+    logger.info(`Admin user [${email}] synchronized with environment credentials`);
+  } catch (adminErr) {
+    logger.warn(`AdminUser sync note: ${adminErr.message}`);
+  }
+
+  // 2. Auto-seed Knowledge Base if empty on first startup
+  try {
+    const { KnowledgeEntry } = require('./models/KnowledgeEntry');
+    const count = await KnowledgeEntry.countDocuments();
+    if (count === 0) {
+      logger.info('Database empty. Performing initial seed of knowledge entries...');
+      const { SEED_DATA } = require('./scripts/seedKnowledgeBase');
+      await KnowledgeEntry.insertMany(SEED_DATA);
+      logger.info(`Auto-seeded ${SEED_DATA.length} categories`);
+    }
+  } catch (seedErr) {
+    logger.warn(`Initial seed check note: ${seedErr.message}`);
+  }
+
+  // 3. Initialize LanceDB Vector Table and sync
+  try {
+    await getTable();
+    await syncAllToVectorStore();
+    logger.info('LanceDB vector store initialized and synchronized');
+  } catch (lErr) {
+    logger.warn(`LanceDB initial check note: ${lErr.message}`);
+  }
+}
+
 async function startServer() {
   try {
-    // 1. Connect to persistent MongoDB (Atlas, external, or embedded 27017 with wiredTiger)
+    mongoose.connection.on('connected', () => {
+      logger.info('Mongoose connected event fired. Synchronizing database state...');
+      syncDatabaseState();
+    });
+
+    // 1. Connect to persistent MongoDB (Atlas, external, or embedded)
     await connectDB();
+    await syncDatabaseState();
 
-    // 2. Synchronize AdminUser from environment credentials
-    try {
-      const { AdminUser } = require('./models/AdminUser');
-      const email = env.ADMIN_EMAIL.toLowerCase().trim();
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, salt);
-
-      await AdminUser.findOneAndUpdate(
-        { email },
-        { email, passwordHash },
-        { upsert: true, new: true }
-      );
-      logger.info(`Admin user [${email}] synchronized with environment credentials`);
-    } catch (adminErr) {
-      logger.warn(`AdminUser sync note: ${adminErr.message}`);
-    }
-
-    // 3. Auto-seed Knowledge Base if empty on first startup
-    try {
-      const { KnowledgeEntry } = require('./models/KnowledgeEntry');
-      const count = await KnowledgeEntry.countDocuments();
-      if (count === 0) {
-        logger.info('Database empty. Performing initial seed of knowledge entries...');
-        const { SEED_DATA } = require('./scripts/seedKnowledgeBase');
-        await KnowledgeEntry.insertMany(SEED_DATA);
-        logger.info(`Auto-seeded ${SEED_DATA.length} categories`);
-      }
-    } catch (seedErr) {
-      logger.warn(`Initial seed check note: ${seedErr.message}`);
-    }
-
-    // 4. Initialize LanceDB Vector Table and sync
-    try {
-      await getTable();
-      await syncAllToVectorStore();
-      logger.info('LanceDB vector store initialized and synchronized');
-    } catch (lErr) {
-      logger.warn(`LanceDB initial check note: ${lErr.message}`);
-    }
-
-    // 5. Start Express server
+    // 2. Start Express server
     const server = app.listen(env.PORT, '0.0.0.0', () => {
       logger.info(`AI WasteWise Backend running on port ${env.PORT} in [${env.NODE_ENV}] mode`);
       logger.info(`Access Health Check: http://localhost:${env.PORT}/api/health`);

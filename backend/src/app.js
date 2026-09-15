@@ -69,8 +69,10 @@ app.use((req, res, next) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  const mongoose = require('mongoose');
   res.status(200).json({
     status: 'healthy',
+    database: mongoose.connection.readyState === 1 ? 'connected' : (mongoose.connection.readyState === 2 ? 'connecting' : 'disconnected'),
     service: 'AI WasteWise API',
     sdg: 'SDG 12: Responsible Consumption and Production',
     timestamp: new Date().toISOString()
