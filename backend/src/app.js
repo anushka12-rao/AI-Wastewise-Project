@@ -73,6 +73,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     database: mongoose.connection.readyState === 1 ? 'connected' : (mongoose.connection.readyState === 2 ? 'connecting' : 'disconnected'),
+    adminEmail: env.ADMIN_EMAIL,
     service: 'AI WasteWise API',
     sdg: 'SDG 12: Responsible Consumption and Production',
     timestamp: new Date().toISOString()
