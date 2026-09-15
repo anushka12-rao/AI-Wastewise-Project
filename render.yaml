@@ -49,4 +49,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://ai-wastewise-backend.onrender.com
+        value: https://ai-wastewise-backend-n1xw.onrender.com
